@@ -1,0 +1,6 @@
+venv
+mlruns
+*.csv
+*.pyc
+*.lock
+__pycache__

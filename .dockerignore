@@ -1,0 +1,5 @@
+data
+notebooks
+venv
+MLproject
+*.lock

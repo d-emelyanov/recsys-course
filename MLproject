@@ -1,0 +1,11 @@
+name: recsys-course
+
+docker-env:
+    image: recsys
+    volumes: [""]
+    environment: []
+
+entry_points:
+
+    random:
+        command: "python -m recsys_random train"
