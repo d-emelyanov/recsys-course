@@ -7,8 +7,8 @@ class PopularRecommender(BaseRecommender):
     @classmethod
     def from_args(cls, args):
         parser = ArgumentParser()
-        parser.add_argument('-k', type=int)
-        parser.add_argument('-days', type=int)
+        parser.add_argument('--k', type=int)
+        parser.add_argument('--days', type=int)
         args = parser.parse_args(args)
         return cls(
             k=args.k,
@@ -23,7 +23,7 @@ class PopularRecommender(BaseRecommender):
         self.k = k
         self.days = days
 
-    def fit(self):
+    def fit(self, data):
         pass
 
     def recommend(self):

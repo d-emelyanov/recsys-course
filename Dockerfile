@@ -4,13 +4,11 @@ WORKDIR /home
 
 ADD . /home
 
+RUN apt-get update && apt-get install -y git
+
 RUN cd /home && \
     pip install --upgrade pip && \
     pip install poetry
 
 RUN poetry config virtualenvs.create false && \
     poetry install
-
-EXPOSE 5000
-
-CMD mlflow ui -h 0.0.0.0 -p 5000

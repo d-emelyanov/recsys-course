@@ -7,16 +7,16 @@ from more_itertools import pairwise
 class DataLoader:
 
     @classmethod
-    def from_list(cls, files):
+    def from_folder(cls, files):
         kw = {
             'users': None,
             'items': None,
             'interactions': None
         }
-        for fp in files:
+        for fp in os.listdir(files):
             for kwk in kw.keys():
                 if kwk in fp:
-                    kw[kwk] = fp
+                    kw[kwk] = os.path.join(files, fp)
         return cls(**kw)
 
     def __init__(
