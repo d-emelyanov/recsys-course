@@ -1,6 +1,8 @@
 import pandas as pd
 import os
 
+from pandas.core.base import DataError
+
 
 class DataLoader:
 
@@ -26,14 +28,25 @@ class DataLoader:
         self.users = users
         self.items = items
         self.interactions = interactions
+        self.interactions['last_watch_dt'] = pd.to_datetime(
+            self.interactions['last_watch_dt']
+        )
 
-    @property
-    def train(self):
-        pass
-
-    @property
-    def test(self):
-        pass
+    def train_test_split(self, k=0.7):
+        dates_ = (
+            self.interactions['last_watch_dt']
+            .unique()
+        )
+        n = int(len(dates_) * k)
+        self.train = self.interactions.loc[
+            (self.interactions['last_watch_dt'] >= dates_[:n].min())
+            & (self.interactions['last_watch_dt'] <= dates_[:n].max())
+        ]
+        self.test = self.interactions.loc[
+            (self.interactions['last_watch_dt'] > dates_[n:].min())
+            & (self.interactions['last_watch_dt'] <= dates_[n:].max())
+        ]
+        print(self.train)
 
     @property
     def users(self):

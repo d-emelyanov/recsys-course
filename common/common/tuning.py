@@ -31,6 +31,15 @@ class Optimizer:
             }
         )
 
+    @property
+    def best_model(self):
+        rec = self.model(
+            **self.fixed_params,
+            **self.study.best_params
+        )
+        rec.fit(self.data.train)
+        return rec
+
     def __init__(self, fixed_params, trial_params):
         self.fixed_params = fixed_params
         self.trial_params = trial_params
@@ -54,13 +63,13 @@ class Optimizer:
         )
 
     def optimize(self, n_recs, model, data):
-        study = optuna.create_study()
+        self.study = optuna.create_study()
 
         self.n_recs = n_recs
         self.model = model
         self.data = data
 
-        study.optimize(
+        self.study.optimize(
             self.objective,
             n_trials=100
         )

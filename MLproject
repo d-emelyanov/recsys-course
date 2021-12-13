@@ -12,4 +12,5 @@ entry_points:
         parameters:
             data: string
             recsys: string
+            n_recs: int
         command: "python -m recsys_course.train -d {data} -r {recsys}"
