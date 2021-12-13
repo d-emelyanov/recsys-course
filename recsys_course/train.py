@@ -1,6 +1,6 @@
-import argparse
 import importlib
 import mlflow
+import logging
 from argparse import ArgumentParser
 from datetime import datetime
 from common.data import DataLoader
@@ -10,6 +10,9 @@ from common.metrics import map_at_k
 
 if __name__ == '__main__':
 
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+
     parser = ArgumentParser()
     parser.add_argument('-r', '--recsys', type=str, required=True)
     parser.add_argument('-d', '--data', type=str, required=True)
@@ -17,6 +20,7 @@ if __name__ == '__main__':
     parser.add_argument('-o', '--optuna', action='store_true', default=False)
     args, params = parser.parse_known_args()
 
+    logging.info('Loading data..')
     data = DataLoader.from_folder(args.data)
     data.train_test_split()
 
@@ -37,23 +41,25 @@ if __name__ == '__main__':
             )
             rec = optimizer.best_model
         else:
+            logging.info('Training model..')
             rec = rec_class.from_args(params)
             rec.fit(data.train)
 
+
         mlflow.log_metric(
-            f'train_map@{args.n_recs}',
+            f'train_map{args.n_recs}',
             map_at_k(
                 k=args.n_recs,
-                recs=rec.predict(data.train),
-                real=data.train['real']
+                recs=rec.recommend(data.train, N=args.n_recs)['recs'],
+                real=data.train_real
             )
         )
 
-        mlflow.log_metrics(
-            f'test_map@{args.n_recs}',
+        mlflow.log_metric(
+            f'test_map{args.n_recs}',
             map_at_k(
                 k=args.n_recs,
-                recs=rec.predict(data.test),
-                real=data.test['real']
+                recs=rec.recommend(data.test, N=args.n_recs)['recs'],
+                real=data.test_real
             )
         )

@@ -4,6 +4,16 @@ import os
 from pandas.core.base import DataError
 
 
+class Dataset:
+
+    def __init__(self, df):
+        self.df = df
+
+    @property
+    def real(self):
+        pass
+
+
 class DataLoader:
 
     @classmethod
@@ -38,15 +48,33 @@ class DataLoader:
             .unique()
         )
         n = int(len(dates_) * k)
+
         self.train = self.interactions.loc[
             (self.interactions['last_watch_dt'] >= dates_[:n].min())
             & (self.interactions['last_watch_dt'] <= dates_[:n].max())
         ]
+
         self.test = self.interactions.loc[
             (self.interactions['last_watch_dt'] > dates_[n:].min())
             & (self.interactions['last_watch_dt'] <= dates_[n:].max())
         ]
-        print(self.train)
+
+    def get_real(self, df):
+        return (
+            df
+            .sort_values(['user_id', 'last_watch_dt'])
+            .groupby('user_id')['item_id']
+            .apply(list)
+            .reset_index()['item_id']
+        )
+
+    @property
+    def train_real(self):
+        return self.get_real(self.train)
+
+    @property
+    def test_real(self):
+        return self.get_real(self.test)
 
     @property
     def users(self):

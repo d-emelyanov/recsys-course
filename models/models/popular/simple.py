@@ -33,7 +33,7 @@ class PopularRecommender(BaseRecommender):
 
     def fit(self, df):
         min_date = df[self.date_col].max().normalize() - pd.DateOffset(days=self.days)
-        self.recommendations = df.loc[df[self.date_col] > min_date, self.item_col].value_counts().index.values
+        self.recommendations = df.loc[df[self.date_col] > min_date, self.item_col].value_counts().index.values.tolist()
 
     def recommend(self, df, N):
         return pd.DataFrame([
