@@ -8,6 +8,14 @@ class BaseRecommender(ABC):
         pass
 
     @abstractmethod
+    def add_user_features(self, data):
+        pass
+
+    @abstractmethod
+    def add_item_features(self, data):
+        pass
+
+    @abstractmethod
     def fit(self, data):
         pass
 

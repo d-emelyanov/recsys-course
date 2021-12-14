@@ -137,6 +137,8 @@ class Optimizer:
             item_col=self.data.item_col,
             date_col=self.data.date_col
         )
+        rec.add_item_features(self.data.items)
+        rec.add_user_features(self.data.users)
         steps = self.train(rec)
         return np.mean([x[f'map{self.n_recs}'] for x in steps])
 

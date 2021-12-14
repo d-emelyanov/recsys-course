@@ -8,13 +8,10 @@ from datetime import datetime
 from common.data import DataLoader
 from common.tuning import Optimizer
 from common.metrics import map_at_k
+from .const import *
 
 
 if __name__ == '__main__':
-
-    USER_COL = 'user_id'
-    ITEM_COL = 'item_id'
-    DATE_COl = 'last_watch_dt'
 
     logger = logging.getLogger()
     logger.setLevel(logging.INFO)
@@ -67,6 +64,8 @@ if __name__ == '__main__':
                 item_col=ITEM_COL,
                 date_col=DATE_COl
             )
+            rec.add_item_features(data.items)
+            rec.add_user_features(data.users)
             steps = []
             for train, test, info in data.get_folds(args.folds, args.fold_size):
                 rec.fit(train)

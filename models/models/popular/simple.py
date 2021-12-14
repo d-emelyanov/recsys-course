@@ -28,6 +28,12 @@ class PopularRecommender(BaseRecommender):
         self.date_col = date_col
         self.recommendations = []
 
+    def add_item_features(self, data):
+        pass
+
+    def add_user_features(self, data):
+        pass
+
     def fit(self, df):
         min_date = df[self.date_col].max().normalize() - pd.DateOffset(days=self.days)
         self.recommendations = df.loc[df[self.date_col] > min_date, self.item_col].value_counts().index.values.tolist()
