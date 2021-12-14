@@ -6,17 +6,14 @@ from argparse import ArgumentParser
 class PopularRecommender(BaseRecommender):
 
     @classmethod
-    def from_args(cls, args):
+    def from_args(cls, args, **kwargs):
         parser = ArgumentParser()
         parser.add_argument('--days', type=int)
-        parser.add_argument('--item_col', type=str, default='item_id')
-        parser.add_argument('--user_col', type=str, default='user_id')
-        parser.add_argument('--date_col', type=str, default='last_watch_dt')
         args = parser.parse_args(args)
         return cls(**{
             k: v
             for k, v in vars(args).items()
-        })
+        }, **kwargs)
 
     def __init__(
         self,
@@ -35,10 +32,5 @@ class PopularRecommender(BaseRecommender):
         min_date = df[self.date_col].max().normalize() - pd.DateOffset(days=self.days)
         self.recommendations = df.loc[df[self.date_col] > min_date, self.item_col].value_counts().index.values.tolist()
 
-    def recommend(self, df, N):
-        return pd.DataFrame([
-            {
-                'user_id': uid,
-                'recs': self.recommendations[:N]
-            } for uid in df[self.user_col].unique().tolist()
-        ])
+    def recommend(self, user_ids, N):
+        return pd.Series([self.recommendations[:N] for _ in range(len(user_ids))])

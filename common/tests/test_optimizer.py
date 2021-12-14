@@ -6,15 +6,16 @@ from argparse import Namespace
 class TestOptimizer(TestCase):
 
     def test_from_args(self):
-        args = Namespace(
-            x__type='float',
-            x__low=10,
-            x__high=15,
-            y__type='int',
-            y__low=1,
-            y__high=5,
-            z=10
-        )
+        args = [
+            '--x__type', 'float',
+            '--x__low', '10',
+            '--x__high', '15',
+            '--y__type', 'int',
+            '--y__low', '1',
+            '--y__high', '5',
+            '--z__type', 'float',
+            '--z__fixed', '10'
+        ]
         opt = Optimizer.from_args(args)
         self.assertDictEqual(
             opt.trial_params,
