@@ -5,7 +5,7 @@ description = ""
 authors = ["Danil Emelyanov <danil3d@mail.ru>"]
 
 [tool.poetry.dependencies]
-python = "~3.9.0"
+python = "~3.9.7"
 mlflow = "^1.22.0"
 models = { path = "./models/", develop = true }
 

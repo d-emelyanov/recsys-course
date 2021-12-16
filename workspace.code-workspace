@@ -1,0 +1,10 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"python.defaultInterpreterPath": "/Users/d-emeljanov/pet_projects/recsys-course/venv/bin/python"
+	}
+}

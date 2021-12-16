@@ -1,7 +1,12 @@
-from abc import ABC, abstractmethod, abstractclassmethod
+from abc import ABC, abstractmethod, abstractclassmethod, abstractproperty
 
 
 class BaseRecommender(ABC):
+
+    @abstractproperty
+    @property
+    def params(self):
+        pass
 
     @abstractclassmethod
     def from_args(cls, params):

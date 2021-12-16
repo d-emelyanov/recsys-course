@@ -50,9 +50,20 @@ class DataLoader:
         self.item_col = item_col
         self.date_col = date_col
 
-    def get_folds(self, folds, fold_size):
+    def get_train_test(self, test_size):
+        n = self.interactions.shape[0]
+        i = int(n * (1 - test_size))
+        interactions = self.interactions.sort_values(
+            self.date_col
+        )
+        return (
+            interactions.loc[:i],
+            interactions.loc[i:]
+        )
+
+    def get_folds(self, folds):
         last_date = self.interactions[self.date_col].max().normalize()
-        start_date = last_date - pd.Timedelta(days=folds*fold_size)
+        start_date = last_date - pd.Timedelta(days=folds*7)
         cv = TimeRangeSplit(
             start_date=start_date,
             periods=folds+1,

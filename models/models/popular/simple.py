@@ -28,6 +28,12 @@ class PopularRecommender(BaseRecommender):
         self.date_col = date_col
         self.recommendations = []
 
+    @property
+    def params(self):
+        return {
+            'days': self.days
+        }
+
     def add_item_features(self, data):
         pass
 
