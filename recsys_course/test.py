@@ -50,5 +50,8 @@ if __name__ == '__main__':
 
     logging.info('Generating predictions')
     df = pd.DataFrame({USER_COL: test[USER_COL].unique().tolist()})
-    df['item_id'] = rec.recommend(test, N=args.n_recs)
+    df['item_id'] = rec.recommend(
+        test[USER_COL].tolist(),
+        N=args.n_recs
+    )
     df.to_csv(args.submission, index=False)

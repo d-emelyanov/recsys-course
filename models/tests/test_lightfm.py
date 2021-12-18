@@ -1,6 +1,8 @@
 import pandas as pd
 from unittest import TestCase
-from models import lightfm
+from models.lightfm import (
+    simple
+)
 
 
 class TestLightFM(TestCase):
@@ -15,4 +17,15 @@ class TestLightFM(TestCase):
         self.df['ts'] = pd.to_datetime(self.df['ts'])
 
     def test_simple(self):
-        self.assertEqual(1, 1)
+        rec = simple.Simple(
+            no_components=10,
+            item_col='iid',
+            user_col='uid',
+            date_col='ts'
+        )
+        rec.fit(self.df)
+        recs = rec.recommend(user_ids=[1, 2, 3], N=10)
+        self.assertEqual(
+            [3, 3, 3],
+            [len(r) for r in recs.values.tolist()]
+        )

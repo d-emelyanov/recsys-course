@@ -8,6 +8,7 @@ authors = ["Danil Emelyanov <danil3d@mail.ru>"]
 python = "~3.9.0"
 common = { path = "../common/", develop = true }
 lightfm = "^1.16"
+xgboost = "^1.5.1"
 
 
 [tool.poetry.dev-dependencies]

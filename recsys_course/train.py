@@ -3,6 +3,7 @@ import mlflow
 import logging
 import pandas as pd
 import numpy as np
+import time
 from argparse import ArgumentParser
 from datetime import datetime
 from common.data import DataLoader
@@ -39,6 +40,7 @@ if __name__ == '__main__':
     rec_class = getattr(module, rec_class_name)
 
     mlflow.set_experiment('recsys')
+    start_time = time.time()
     with mlflow.start_run():
 
         if args.optuna:
@@ -74,7 +76,12 @@ if __name__ == '__main__':
                 right=data.get_real(test).rename(columns={ITEM_COL: 'real'}),
                 on=[USER_COL]
             )
-            df['recs'] = rec.recommend(df[USER_COL], N=args.n_recs)
+
+            df['recs'] = rec.recommend(
+                df[USER_COL].tolist(),
+                N=args.n_recs
+            )
+
             metrics = {
                 f'map{args.n_recs}': map_at_k(
                     k=args.n_recs,
@@ -84,7 +91,12 @@ if __name__ == '__main__':
             }
             log_params = rec.params
 
-        mlflow.log_metrics(metrics)
+        end_time = time.time()
+
+        mlflow.log_metrics({
+            **metrics,
+            'time_exec': end_time - start_time
+        })
 
         mlflow.log_params({
             **log_params,
