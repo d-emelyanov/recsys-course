@@ -17,7 +17,7 @@ if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('-r', '--recsys', type=str, required=True)
     parser.add_argument('-d', '--data', type=str, required=True)
-    parser.add_argument('-n', '--n_recs', type=int, required=True)
+    parser.add_argument('-n', '--n_recs', type=int, default=10)
     parser.add_argument('-t', '--test_file', type=str, required=True)
     parser.add_argument('-s', '--submission', type=str, required=True)
     args, params = parser.parse_known_args()

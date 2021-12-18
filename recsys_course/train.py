@@ -20,7 +20,7 @@ if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('-r', '--recsys', type=str, required=True)
     parser.add_argument('-d', '--data', type=str, required=True)
-    parser.add_argument('-n', '--n_recs', type=int, required=True)
+    parser.add_argument('-n', '--n_recs', type=int,  default=10)
     parser.add_argument('--test_size', type=float, default=0.3)
     parser.add_argument('-o', '--optuna', action='store_true', default=False)
     parser.add_argument('--optuna_trials', type=int, default=1)

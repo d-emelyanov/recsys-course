@@ -9,7 +9,6 @@ class PopularRecommender(BaseRecommender):
     def from_args(cls, args, **kwargs):
         parser = ArgumentParser()
         parser.add_argument('--days', type=int)
-        parser.add_argument('--watched_pct_min', type=int, default=0)
         args = parser.parse_args(args)
         return cls(**{
             k: v
@@ -19,13 +18,11 @@ class PopularRecommender(BaseRecommender):
     def __init__(
         self,
         days,
-        watched_pct_min,
         item_col,
         user_col,
         date_col,
     ):
         self.days = days
-        self.watched_pct_min = watched_pct_min
         self.item_col = item_col
         self.user_col = user_col
         self.date_col = date_col
@@ -44,7 +41,6 @@ class PopularRecommender(BaseRecommender):
         pass
 
     def fit(self, df):
-        df = df.loc[df['watched_pct'] >= self.watched_pct_min]
         min_date = df[self.date_col].max().normalize() - pd.DateOffset(days=self.days)
         self.recommendations = df.loc[df[self.date_col] > min_date, self.item_col].value_counts().index.values.tolist()
 

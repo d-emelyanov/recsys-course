@@ -2,6 +2,8 @@ import os
 import logging
 import pandas as pd
 
+from sklearn.preprocessing import OneHotEncoder
+
 
 BASE_DIR = os.path.dirname(
     os.path.dirname(os.path.abspath(__file__))
