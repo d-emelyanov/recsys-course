@@ -34,7 +34,8 @@ class PopularRecommender(BaseRecommender):
     @property
     def params(self):
         return {
-            'days': self.days
+            'days': self.days,
+            'watched_pct_min': self.watched_pct_min
         }
 
     def add_item_features(self, data):

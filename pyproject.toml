@@ -8,6 +8,7 @@ authors = ["Danil Emelyanov <danil3d@mail.ru>"]
 python = "~3.9.7"
 mlflow = "^1.22.0"
 models = { path = "./models/", develop = true }
+transliterate = "^1.10.2"
 
 
 [tool.poetry.dev-dependencies]
