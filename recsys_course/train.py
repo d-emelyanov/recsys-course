@@ -64,8 +64,12 @@ if __name__ == '__main__':
                 item_col=ITEM_COL,
                 date_col=DATE_COl
             )
-            rec.add_item_features(data.items)
-            rec.add_user_features(data.users)
+            if data.has_items:
+                rec.add_item_features(data.items)
+            if data.has_users:
+                rec.add_user_features(data.users)
+            if data.has_unused:
+                rec.add_unused(data.unused)
 
             train, test = data.get_train_test(args.test_size)
             rec.fit(train)

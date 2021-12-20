@@ -23,7 +23,8 @@ class DataLoader:
         kw = {
             'users': None,
             'items': None,
-            'interactions': None
+            'interactions': None,
+            'unused': None
         }
         for fp in os.listdir(files):
             for kwk in kw.keys():
@@ -36,12 +37,14 @@ class DataLoader:
         users,
         items,
         interactions,
+        unused,
         user_col,
         item_col,
         date_col
     ):
         self.users = users
         self.items = items
+        self.unused = unused
         self.interactions = interactions
         self.interactions[date_col] = pd.to_datetime(
             self.interactions[date_col]
@@ -102,6 +105,18 @@ class DataLoader:
         )
 
     @property
+    def has_users(self):
+        return self.__users is not None
+
+    @property
+    def has_items(self):
+        return self.__items is not None
+
+    @property
+    def has_unused(self):
+        return self.__unused is not None
+
+    @property
     def users(self):
         return self.__users
 
@@ -110,8 +125,19 @@ class DataLoader:
         return self.__items
 
     @property
+    def unused(self):
+        return self.__unused
+
+    @property
     def interactions(self):
         return self.__interactions
+
+    @unused.setter
+    def unused(self, var):
+        if var:
+            self.__unused = pd.read_csv(var)
+        else:
+            self.__unused = None
 
     @users.setter
     def users(self, var):

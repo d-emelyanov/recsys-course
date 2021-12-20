@@ -3,6 +3,7 @@ import logging
 from common.abstract import BaseRecommender
 from argparse import ArgumentParser
 from itertools import product
+from recsys_course.preprocess import preprocess_users
 from tqdm import tqdm
 
 
@@ -90,6 +91,7 @@ class SegmentRecommender(BaseRecommender):
 
         df = pd.DataFrame({self.user_col: user_ids})
         df = self.get_full_df(df, self.user_col)
+        df = preprocess_users(df)
         df['segment'] = df.apply(lambda x: [x[i] for i in self.segment], axis=1)
         df['recs'] = df['segment'].map(lambda x: get_recs(x, self.recommendations, self.fallback, N))
         return df['recs']

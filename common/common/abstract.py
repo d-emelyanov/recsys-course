@@ -32,6 +32,9 @@ class BaseRecommender(ABC):
     def add_item_features(self, data):
         self.item_features = data
 
+    def add_unused(self, data):
+        self.unused = data
+
     def get_full_df(self, data, user_col, item_col):
         data = pd.merge(
             left=data,

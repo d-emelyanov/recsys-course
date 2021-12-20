@@ -71,33 +71,13 @@ class SimpleLightFMXGBoost(BaseRecommender):
 
     def fit(self, df):
 
-        class UnusedItems:
-            def __init__(self, ids, r):
-                self.ids = set(list(ids))
-                self.r = r
-
-            def __call__(self, x):
-                l = list(set(list(x)) ^ self.ids)
-                return np.random.choice(l, min([len(l), self.r]))
-
         logging.info('Training lightfm model')
         self.lightfm.fit(df)
 
         logging.info('Training booster')
 
-        unused = (
-            df
-            .groupby(self.user_col)[self.item_col]
-            .apply(UnusedItems(
-                ids=df[self.item_col].unique().tolist(),
-                r=10
-            ))
-            .reset_index()
-            .explode(self.item_col)
-            .dropna()
-        )
         unused = self.get_full_df(
-            data=unused,
+            data=self.unused,
             user_col=self.user_col,
             item_col=self.item_col
         )

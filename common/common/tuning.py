@@ -132,8 +132,12 @@ class Optimizer(BaseOptimizer):
             item_col=self.data.item_col,
             date_col=self.data.date_col
         )
-        rec.add_item_features(self.data.items)
-        rec.add_user_features(self.data.users)
+        if self.data.has_items:
+            rec.add_item_features(self.data.items)
+        if self.data.has_users:
+            rec.add_user_features(self.data.users)
+        if self.data.has_unused:
+            rec.add_unused(self.data.unused)
         return self.train(rec)[f'map{self.n_recs}']
 
     def optimize(self, n_recs, model, data, test_size, trials):
@@ -205,8 +209,12 @@ class OptimizerFolds(BaseOptimizer):
             item_col=self.data.item_col,
             date_col=self.data.date_col
         )
-        rec.add_item_features(self.data.items)
-        rec.add_user_features(self.data.users)
+        if self.data.has_items:
+            rec.add_item_features(self.data.items)
+        if self.data.has_users:
+            rec.add_user_features(self.data.users)
+        if self.data.has_unused:
+            rec.add_unused(self.data.unused)
         steps = self.train(rec)
         return np.mean([x[f'map{self.n_recs}'] for x in steps])
 
