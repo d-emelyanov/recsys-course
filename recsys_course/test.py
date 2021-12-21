@@ -27,7 +27,7 @@ if __name__ == '__main__':
         args.data,
         user_col=USER_COL,
         item_col=ITEM_COL,
-        date_col=DATE_COl
+        date_col=DATE_COL
     )
 
     test = pd.read_csv(args.test_file)
@@ -42,7 +42,7 @@ if __name__ == '__main__':
         params,
         user_col=USER_COL,
         item_col=ITEM_COL,
-        date_col=DATE_COl
+        date_col=DATE_COL
     )
     rec.add_item_features(data.items)
     rec.add_user_features(data.users)
