@@ -30,7 +30,8 @@ class TestTrain(TestCase):
 
         pd.DataFrame([
             (1, 'age_25_34', 'income_10_20', 'm', 1),
-            (2, 'age_25_34', 'income_20_30', 'zh', 0)
+            (2, 'age_25_34', 'income_20_30', 'zh', 0),
+            (3, 'age_25_34', 'income_20_30', 'm', 1)
         ], columns=[
             'user_id',
             'age',
@@ -67,8 +68,11 @@ class TestTrain(TestCase):
         pd.DataFrame([
             (1, 1, '2021-12-06', 4250, 72),
             (1, 2, '2021-12-07', 4300, 90),
-            (1, 3, '2021-12-14', 4100, 10),
             (2, 1, '2021-12-08', 4250, 72),
+            (3, 3, '2021-12-08', 4100, 25),
+            (3, 4, '2021-12-08', 5000, 30),
+            (1, 5, '2021-12-14', 3200, 72),
+            (1, 3, '2021-12-18', 4100, 10),
             (2, 4, '2021-12-19', 5000, 30)
         ], columns=[
             'user_id',
@@ -111,6 +115,10 @@ class TestTrain(TestCase):
         self.assertEqual(
             len(rec.recommend([3, 4], 2).iloc[0]), 2
         )
+        self.assertEqual(
+            0.85,
+            metrics['map10']
+        )
 
     def test_popular_recommender_folds(self):
         params = ['--days', '10', '--watched_pct_min', '0']
@@ -125,15 +133,18 @@ class TestTrain(TestCase):
 
         metrics, params, (_, _) = trainer.train()
         self.assertEqual(
-            len(metrics.keys()),
-            1
+            len(metrics.keys()), 1
+        )
+        self.assertEqual(
+            1.0,
+            metrics['map10']
         )
 
     def test_popular_recommender__optuna(self):
         params = [
             '--days__type', 'int',
-            '--days__low', '5',
-            '--days__high', '5',
+            '--days__low', '10',
+            '--days__high', '10',
             '--watched_pct_min__type', 'int',
             '--watched_pct_min__low', '0',
             '--watched_pct_min__high', '0'
@@ -148,7 +159,7 @@ class TestTrain(TestCase):
         )
         optimizer = Optimizer.from_args(params)
         optimizer.optimize(
-            trials=1,
+            trials=5,
             trainer=trainer,
         )
         metrics = optimizer.best_metrics
@@ -157,3 +168,59 @@ class TestTrain(TestCase):
         self.assertEqual(
             len(metrics.keys()), 1
         )
+        self.assertEqual(
+            0.85,
+            metrics['map10']
+        )
+
+    def test_popular_recommender__folds__optuna(self):
+        params = [
+            '--days__type', 'int',
+            '--days__low', '10',
+            '--days__high', '10',
+            '--watched_pct_min__type', 'int',
+            '--watched_pct_min__low', '0',
+            '--watched_pct_min__high', '0'
+        ]
+        trainer = Trainer(
+            params=params,
+            data=self.data,
+            rec_class=PopularRecommender,
+            fb_class=None,
+            folds=1,
+            n_recs=10,
+        )
+        optimizer = Optimizer.from_args(params)
+        optimizer.optimize(
+            trials=5,
+            trainer=trainer,
+        )
+        metrics = optimizer.best_metrics
+        params = optimizer.best_params
+
+        self.assertEqual(
+            len(metrics.keys()), 1
+        )
+        self.assertEqual(
+            1.0,
+            metrics['map10']
+        )
+
+    def test_segment_recommender(self):
+        params = [
+            '--days', '10',
+            '--watched_pct_min', '0',
+            '--segment', 'age'
+        ]
+        trainer = Trainer(
+            params=params,
+            data=self.data,
+            rec_class=SegmentRecommender,
+            fb_class=PopularRecommender,
+            test_size=0.3,
+            n_recs=10,
+        )
+        metrics, params, (rec, _) = trainer.train()
+        self.assertEqual(0.85, metrics['map10'])
+
+        print(rec.recommend([2, 10, 20], N=10))

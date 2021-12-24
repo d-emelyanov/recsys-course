@@ -59,15 +59,15 @@ class Trainer:
         df = pd.DataFrame({self.data.user_col: user_ids})
         df = pd.merge(
             left=df,
-            right=self.data.get_real_items(df).rename(columns={self.data.item_col: 'real'}),
+            right=self.data.get_real_items(df[self.data.user_col].unique().tolist()),
             on=[self.data.user_col]
         )
-
+        if df.shape[0] == 0:
+            raise ValueError('Trainer.evaluate :: no data to evaluate')
         df['recs'] = rec.recommend(
             df[self.data.user_col].tolist(),
             N=self.n_recs
         )
-
         metrics = {
             f'map{self.n_recs}': map_at_k(
                 k=self.n_recs,
@@ -91,7 +91,7 @@ class Trainer:
                     self.params,
                     user_col=self.data.user_col,
                     item_col=self.data.item_col,
-                    date_col=self.date_col
+                    date_col=self.data.date_col
                 )
             else:
                 fallback = None
@@ -126,9 +126,18 @@ class Trainer:
         metrics = {}
         rec.fit(train)
         if self.has_fallback:
-            test_cold, test_warm = rec.split_users(test)
+            test_cold = test.loc[
+                ~test[self.data.user_col].isin(
+                    train[self.data.user_col].unique().tolist()
+                )
+            ]
+            test_warm = test.loc[
+                test[self.data.user_col].isin(
+                    train[self.data.user_col].unique().tolist()
+                )
+            ]
             metrics_cold = self.evaluate(
-                user_ids=test_cold,
+                user_ids=test_cold[self.data.user_col].unique().tolist(),
                 rec=fallback,
             )
             metrics = {
@@ -137,10 +146,12 @@ class Trainer:
             }
         else:
             test_warm = test[self.data.user_col].unique().tolist()
+
         metrics_warm = self.evaluate(
             user_ids=test_warm,
             rec=rec
         )
+
         metrics = {
             **metrics,
             **{k: v for k, v in metrics_warm.items()}
