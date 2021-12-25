@@ -68,6 +68,7 @@ class Trainer:
             df[self.data.user_col].tolist(),
             N=self.n_recs
         )
+
         metrics = {
             f'map{self.n_recs}': map_at_k(
                 k=self.n_recs,
@@ -136,19 +137,20 @@ class Trainer:
                     train[self.data.user_col].unique().tolist()
                 )
             ]
-            metrics_cold = self.evaluate(
-                user_ids=test_cold[self.data.user_col].unique().tolist(),
-                rec=fallback,
-            )
-            metrics = {
-                **metrics,
-                **{f'fallback_{k}': v for k, v in metrics_cold.items()}
-            }
+            if test_cold.shape[0] > 0:
+                metrics_cold = self.evaluate(
+                    user_ids=test_cold[self.data.user_col].unique().tolist(),
+                    rec=fallback,
+                )
+                metrics = {
+                    **metrics,
+                    **{f'fallback_{k}': v for k, v in metrics_cold.items()}
+                }
         else:
-            test_warm = test[self.data.user_col].unique().tolist()
+            test_warm = test.copy()
 
         metrics_warm = self.evaluate(
-            user_ids=test_warm,
+            user_ids=test_warm[self.data.user_col].unique().tolist(),
             rec=rec
         )
 

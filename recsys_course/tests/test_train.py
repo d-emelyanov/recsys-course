@@ -9,6 +9,9 @@ from models.popular import (
     SegmentRecommender,
     PopularRecommender
 )
+from models.hybrid import (
+    TwoStepRecommender
+)
 from models.lightfm  import (
     SimpleLightFM
 )
@@ -19,6 +22,21 @@ TMP_DIR = os.path.join(BASE_DIR, 'tmp')
 
 
 class TestTrain(TestCase):
+
+    def _check(**check_values):
+        def decorator(func):
+            def wrapper(self):
+                metrics = func(self)
+                self.assertEqual(
+                    len(metrics.keys()), 1
+                )
+                if check_values is not None:
+                    for k, v in check_values.items():
+                        self.assertEqual(
+                            metrics[k], v
+                        )
+            return wrapper
+        return decorator
 
     def tearDown(self):
         for f in os.listdir(TMP_DIR):
@@ -41,11 +59,11 @@ class TestTrain(TestCase):
         ]).to_csv(os.path.join(TMP_DIR, 'users.csv'))
 
         pd.DataFrame([
-            (1, 'ct1', 't1', 't1', 2010, 'g1, g2', 'c1', 1, 's1', 'd1', 'a1', 'd1', 'kw1,kw2', 'inf_2010', 0),
-            (2, 'ct2', 't2', 't2', 2020, 'g2', 'c1', 0, 's2', 'd2', 'a2', 'd2', 'kw2, kw3', '1', '2020_inf', 1),
-            (3, 'ct1', 't3', 't3', 2011, 'g1, g2', 'c2', -1, 's3', 'd3', 'a3', 'd3', 'kw1,kw3', '2010_2020', 1),
-            (4, 'ct2', 't4', 't4', 2021, 'g2, g3', 'c3', 0, 's4', 'd4', 'a4', 'd4', 'kw3', '2020_inf', 0),
-            (5, 'ct1', 't5', 't5', 2009, 'g4', 'c4', 1, 's5', 'd5', 'a5', 'd5', 'kw5', 'inf_2010', 1)
+            (1, 'ct1', 't1', 't1', 2010, 'g1, g2', 'c1', 1, 6, 'd1', 'a1', 'd1', 'kw1,kw2', 'inf_2010', 0),
+            (2, 'ct2', 't2', 't2', 2020, 'g2', 'c1', 0, 18, 'd2', 'a2', 'd2', 'kw2, kw3', '1', '2020_inf', 1),
+            (3, 'ct1', 't3', 't3', 2011, 'g1, g2', 'c2', -1, 12, 'd3', 'a3', 'd3', 'kw1,kw3', '2010_2020', 1),
+            (4, 'ct2', 't4', 't4', 2021, 'g2, g3', 'c3', 0,  4, 'd4', 'a4', 'd4', 'kw3', '2020_inf', 0),
+            (5, 'ct1', 't5', 't5', 2009, 'g4', 'c4', 1, 5, 'd5', 'a5', 'd5', 'kw5', 'inf_2010', 1)
         ], columns=[
             'item_id',
             'content_type',
@@ -98,129 +116,127 @@ class TestTrain(TestCase):
             date_col=DATE_COL
         )
 
-    def test_popular_recommender(self):
-        params = ['--days', '10', '--watched_pct_min', '0']
-        trainer = Trainer(
-            params=params,
-            data=self.data,
-            rec_class=PopularRecommender,
-            fb_class=None,
-            test_size=0.3,
-            n_recs=10,
-        )
-        metrics, params, (rec, _) = trainer.train()
-        self.assertEqual(
-            len(metrics.keys()), 1
-        )
-        self.assertEqual(
-            len(rec.recommend([3, 4], 2).iloc[0]), 2
-        )
-        self.assertEqual(
-            0.85,
-            metrics['map10']
-        )
+    # @_check(map10=0.85)
+    # def test_popular_recommender(self):
+    #     params = ['--days', '10', '--watched_pct_min', '0']
+    #     trainer = Trainer(
+    #         params=params,
+    #         data=self.data,
+    #         rec_class=PopularRecommender,
+    #         fb_class=None,
+    #         test_size=0.3,
+    #         n_recs=10,
+    #     )
+    #     metrics, params, (rec, _) = trainer.train()
+    #     return metrics
 
-    def test_popular_recommender_folds(self):
-        params = ['--days', '10', '--watched_pct_min', '0']
-        trainer = Trainer(
-            params=params,
-            data=self.data,
-            rec_class=PopularRecommender,
-            fb_class=None,
-            folds=1,
-            n_recs=10,
-        )
+    # @_check(map10=1.0)
+    # def test_popular_recommender_folds(self):
+    #     params = ['--days', '10', '--watched_pct_min', '0']
+    #     trainer = Trainer(
+    #         params=params,
+    #         data=self.data,
+    #         rec_class=PopularRecommender,
+    #         fb_class=None,
+    #         folds=1,
+    #         n_recs=10,
+    #     )
 
-        metrics, params, (_, _) = trainer.train()
-        self.assertEqual(
-            len(metrics.keys()), 1
-        )
-        self.assertEqual(
-            1.0,
-            metrics['map10']
-        )
+    #     metrics, params, (_, _) = trainer.train()
+    #     return metrics
 
-    def test_popular_recommender__optuna(self):
-        params = [
-            '--days__type', 'int',
-            '--days__low', '10',
-            '--days__high', '10',
-            '--watched_pct_min__type', 'int',
-            '--watched_pct_min__low', '0',
-            '--watched_pct_min__high', '0'
-        ]
-        trainer = Trainer(
-            params=params,
-            data=self.data,
-            rec_class=PopularRecommender,
-            fb_class=None,
-            test_size=0.3,
-            n_recs=10,
-        )
-        optimizer = Optimizer.from_args(params)
-        optimizer.optimize(
-            trials=5,
-            trainer=trainer,
-        )
-        metrics = optimizer.best_metrics
-        params = optimizer.best_params
+    # @_check(map10=0.85)
+    # def test_popular_recommender__optuna(self):
+    #     params = [
+    #         '--days__type', 'int',
+    #         '--days__low', '10',
+    #         '--days__high', '10',
+    #         '--watched_pct_min__type', 'int',
+    #         '--watched_pct_min__low', '0',
+    #         '--watched_pct_min__high', '0'
+    #     ]
+    #     trainer = Trainer(
+    #         params=params,
+    #         data=self.data,
+    #         rec_class=PopularRecommender,
+    #         fb_class=None,
+    #         test_size=0.3,
+    #         n_recs=10,
+    #     )
+    #     optimizer = Optimizer.from_args(params)
+    #     optimizer.optimize(
+    #         trials=5,
+    #         trainer=trainer,
+    #     )
+    #     metrics = optimizer.best_metrics
+    #     params = optimizer.best_params
+    #     return metrics
 
-        self.assertEqual(
-            len(metrics.keys()), 1
-        )
-        self.assertEqual(
-            0.85,
-            metrics['map10']
-        )
+    # @_check(map10=1.0)
+    # def test_popular_recommender__folds__optuna(self):
+    #     params = [
+    #         '--days__type', 'int',
+    #         '--days__low', '10',
+    #         '--days__high', '10',
+    #         '--watched_pct_min__type', 'int',
+    #         '--watched_pct_min__low', '0',
+    #         '--watched_pct_min__high', '0'
+    #     ]
+    #     trainer = Trainer(
+    #         params=params,
+    #         data=self.data,
+    #         rec_class=PopularRecommender,
+    #         fb_class=None,
+    #         folds=1,
+    #         n_recs=10,
+    #     )
+    #     optimizer = Optimizer.from_args(params)
+    #     optimizer.optimize(
+    #         trials=5,
+    #         trainer=trainer,
+    #     )
+    #     metrics = optimizer.best_metrics
+    #     params = optimizer.best_params
+    #     return metrics
 
-    def test_popular_recommender__folds__optuna(self):
-        params = [
-            '--days__type', 'int',
-            '--days__low', '10',
-            '--days__high', '10',
-            '--watched_pct_min__type', 'int',
-            '--watched_pct_min__low', '0',
-            '--watched_pct_min__high', '0'
-        ]
-        trainer = Trainer(
-            params=params,
-            data=self.data,
-            rec_class=PopularRecommender,
-            fb_class=None,
-            folds=1,
-            n_recs=10,
-        )
-        optimizer = Optimizer.from_args(params)
-        optimizer.optimize(
-            trials=5,
-            trainer=trainer,
-        )
-        metrics = optimizer.best_metrics
-        params = optimizer.best_params
+    # @_check()
+    # def test_simple_lightfm(self):
+    #     params = [
+    #         '--days', '10',
+    #         '--watched_pct_min', '0',
+    #         '--no_components', '10'
+    #     ]
+    #     trainer = Trainer(
+    #         params=params,
+    #         data=self.data,
+    #         rec_class=SimpleLightFM,
+    #         fb_class=PopularRecommender,
+    #         test_size=0.3,
+    #         n_recs=10,
+    #     )
+    #     metrics, params, (rec, _) = trainer.train()
+    #     return metrics
 
-        self.assertEqual(
-            len(metrics.keys()), 1
-        )
-        self.assertEqual(
-            1.0,
-            metrics['map10']
-        )
-
-    def test_segment_recommender(self):
+    @_check()
+    def test_2step_lightfm_xgboost(self):
         params = [
             '--days', '10',
             '--watched_pct_min', '0',
-            '--segment', 'age'
+            '--no_components', '10',
+            '--models', 'lightfm.SimpleLightFM',
+            '--models_n', '20',
+            '--final_model', 'xgboost.XGBoostRecommender',
+            '--user_features_col', 'age', 'income', 'sex',
+            '--item_features_col', 'content_type', 'release_year',
+            '--category_features', 'age', 'income', 'sex', 'content_type'
         ]
         trainer = Trainer(
             params=params,
             data=self.data,
-            rec_class=SegmentRecommender,
+            rec_class=TwoStepRecommender,
             fb_class=PopularRecommender,
             test_size=0.3,
             n_recs=10,
         )
         metrics, params, (rec, _) = trainer.train()
-        self.assertEqual(0.85, metrics['map10'])
-
-        print(rec.recommend([2, 10, 20], N=10))
+        return metrics
