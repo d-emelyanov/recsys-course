@@ -26,6 +26,10 @@ class BaseRecommender(ABC):
     def recommend(self, n, data):
         pass
 
+    def __init__(self, **kwargs):
+        for k, v in kwargs.items():
+            setattr(self, k, v)
+
     def add_user_features(self, data):
         self.user_features = data
 

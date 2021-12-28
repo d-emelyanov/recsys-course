@@ -36,7 +36,10 @@ def average_precision_at_k(k: int, recs: pd.Series, real: pd.Series):
 
 
 def map_at_k(k: int, recs: pd.Series, real: pd.Series):
-    return average_precision_at_k(k, recs, real).mean()
+    k = average_precision_at_k(k, recs, real).mean()
+    if np.isnan(k):
+        raise ValueError(f'Metrics is na for {len(recs)} recs and {len(real)} real')
+    return k
 
 
 def aggregate_diversity():

@@ -1,9 +1,20 @@
 import pandas as pd
 import numpy as np
+import importlib
 from common.metrics import map_at_k
 from common.data import DataLoader
 from argparse import ArgumentError
 from typing import Union, Any
+
+
+def get_model_class(model):
+    if model is None:
+        return None
+    rec_module = '.'.join(model.split('.')[:-1])
+    module = importlib.import_module(f'models.{rec_module}')
+    rec_class_name = model.split('.')[-1]
+    rec_class = getattr(module, rec_class_name)
+    return rec_class
 
 
 class Trainer:

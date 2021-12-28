@@ -1,2 +1,2 @@
-from .simple import PopularRecommender
-from .segment import SegmentRecommender
+from .simple import PopularRecommender, PopularUnseenRecommmender
+from .segment import SegmentRecommender, SegmentUnseenRecommender

@@ -3,3 +3,5 @@ notebooks
 venv
 MLproject
 *.lock
+*.code-workspace
+*.sh

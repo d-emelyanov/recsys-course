@@ -1,149 +1,168 @@
-from datetime import date
 import pandas as pd
 import logging
-import numpy as np
-from xgboost import XGBClassifier
-from tqdm import tqdm
-from lightfm import LightFM
-from lightfm.data import Dataset
 from common.abstract import BaseRecommender
-from models.popular.simple import PopularRecommender
-from models.lightfm.simple import SimpleLightFM
 from argparse import ArgumentParser
+from models.loader import load_model
+from tqdm import tqdm
 
 
-class SimpleLightFMXGBoost(BaseRecommender):
+class CombineRecommender(BaseRecommender):
 
-    lightfm: SimpleLightFM = None
-    xgboost: XGBClassifier = None
-    fallback: PopularRecommender = None
+    user_seen = []
 
     @classmethod
     def from_args(cls, args, **kwargs):
         parser = ArgumentParser()
-        parser.add_argument('--no_components', type=int, default=10)
-        parser.add_argument('--user_features',  type=str, nargs='*')
-        parser.add_argument('--item_features', type=str, nargs='*')
-        args = parser.parse_args(args)
+        parser.add_argument('--models', nargs='*', type=str, required=True)
+        parser.add_argument('--models_n', nargs='*', type=int, required=True)
+        args, params = parser.parse_known_args(args)
         return cls(**{
             k: v
             for k, v in vars(args).items()
-        }, **kwargs)
+        }, params=params, **kwargs)
 
     def __init__(
         self,
-        no_components,
-        user_features,
-        item_features,
-        item_col,
-        user_col,
-        date_col,
+        models,
+        models_n,
+        params,
+        **kwargs
     ):
-        self.item_col = item_col
-        self.user_col = user_col
-        self.date_col = date_col
-        self.user_features_col = user_features
-        self.item_features_col = item_features
-        self.lightfm = SimpleLightFM(
-            no_components=no_components,
-            item_col=item_col,
-            user_col=user_col,
-            date_col=date_col
+        super().__init__(**kwargs)
+        self.models_n = models_n
+        self.models = []
+        for model in models:
+            model_ = load_model(model, params, **kwargs)
+            self.models.append((model, model_))
+
+    @property
+    def params(self):
+        params = {}
+        for i, (model_name, model) in enumerate(self.models):
+            params = {
+                **params,
+                **{f'{i}: {model_name}__{k}': v for k, v in model.params.items()}
+            }
+        return params
+
+    def add_user_features(self, data):
+        super().add_user_features(data)
+        for _, model in self.models:
+            model.add_user_features(data)
+
+    def add_item_features(self, data):
+        self.item_features = data
+        for _, model in self.models:
+            model.add_item_features(data)
+
+    def add_unused(self, data):
+        self.unused = data
+        for _, model in self.models:
+            model.add_unused(data)
+
+    def fit(self, df):
+        for (model_name, model) in self.models:
+            logging.info(f'Training {model_name}..')
+            model.fit(df)
+
+    def recommend(self, user_ids, N):
+        df = []
+        for (model_name, model), n in zip(self.models, self.models_n):
+            logging.info(f'Getting recs from {model_name}')
+            df_ = pd.DataFrame({self.user_col: user_ids})
+            df_[self.item_col] = model.recommend(
+                df_[self.user_col].tolist(), n
+            )
+            df_ = df_.explode(self.item_col)
+            df.append(df_)
+
+        recs = (
+            pd
+            .concat(df)
+            .reset_index(drop=True)
+            .groupby(self.user_col)[self.item_col]
+            .value_counts()
         )
-        self.xgboost = XGBClassifier()
-        self.fallback = PopularRecommender(
-            days=5,
-            item_col=item_col,
-            user_col=user_col,
-            date_col=date_col
+
+        ret = []
+        for uid in tqdm(user_ids):
+            ret.append([x for x in recs.loc[uid].index.tolist() if x not in self.user_seen][:N])
+
+        return pd.Series(ret)
+
+
+class CombineUnseenRecommender(CombineRecommender):
+
+    def fit(self, df):
+        super().fit(df)
+        self.user_seen = (
+            df
+            .groupby(self.user_col)[self.item_col]
+            .apply(list)
         )
+
+
+class TwoStepRecommender(CombineRecommender):
+
+    @classmethod
+    def from_args(cls, args, **kwargs):
+        parser = ArgumentParser()
+        parser.add_argument('--models', nargs='*', type=str, required=True)
+        parser.add_argument('--models_n', nargs='*', type=int, required=True)
+        parser.add_argument('--final_model', type=str, required=True)
+        args, params = parser.parse_known_args(args)
+        return cls(**{
+            k: v
+            for k, v in vars(args).items()
+        }, params=params, **kwargs)
+
+    def __init__(
+        self,
+        final_model,
+        params,
+        **kwargs
+    ):
+        super().__init__(params=params, **kwargs)
+        self.final_model = load_model(final_model, params, **kwargs)
 
     @property
     def params(self):
         return {
-            **{f'xgb_{k}': v for k, v in self.xgboost.get_params().items()}
-            **{f'lfm_{k}': v for k, v in self.lightfm.params.items()}
+            **super().params()
+            **self.final_model.params
         }
 
-    @property
-    def features(self):
-        return self.user_features_col + self.item_features_col
+    def add_user_features(self, data):
+        super().add_user_features(data)
+        self.final_model.add_user_features(data)
+
+    def add_item_features(self, data):
+        super().add_item_features(data)
+        self.final_model.add_item_features(data)
+
+    def add_unused(self, data):
+        super().add_unused(data)
+        self.final_model.add_unused(data)
 
     def fit(self, df):
-
-        logging.info('Training lightfm model')
-        self.lightfm.fit(df)
-
-        logging.info('Training booster')
-
-        unused = self.get_full_df(
-            data=self.unused,
-            user_col=self.user_col,
-            item_col=self.item_col
-        )
-        unused['y'] = 0
-
-        data = self.get_full_df(
-            data=df,
-            user_col=self.user_col,
-            item_col=self.item_col
-        )
-        data['y'] =  1
-        data = data.drop(self.date_col, axis=1)
-        data = pd.concat([unused, data]).reset_index(drop=True)
-
-        self.xgboost.fit(data[self.features], data['y'])
-
-        logging.info('Training fallback')
-        self.fallback.fit(df)
+        super().fit(df)
+        self.final_model.fit(df)
 
     def recommend(self, user_ids, N):
-
-        uid, _, _, _ = self.lightfm.data.mapping()
-        seen_users = set(list(uid.keys()))
-        cold_users = set(user_ids) ^ seen_users
-
         df = []
-
-        logging.info('Get fallback recommendations')
-        df_ = pd.DataFrame({self.user_col: list(cold_users)})
-        df_[self.item_col] = self.fallback.recommend(
-            df_[self.user_col].tolist(),
-            N
-        )
-        df.append(df_)
-
-        logging.info('Get lightfm recommendations')
-        df_ = pd.DataFrame({self.user_col: list(seen_users)})
-        df_[self.item_col] = self.lightfm.recommend(seen_users, N=100)
-
-        logging.info('Get xgboost reccommendations')
-        df_ = df_.explode(self.item_col)
-        df_ = self.get_full_df(
-            data=df_,
-            user_col=self.user_col,
-            item_col=self.item_col
-        )
-        df_['score'] = self.xgboost.predict_proba(
-            df_[self.features]
-        )[:, 1]
-        df_ = (
-            df_
-            .groupby(self.user_col)
-            .apply(lambda x: pd.Series({
-                self.item_col: (
-                    x.sort_values('score', ascending=False)[self.item_col]
-                    .tolist()[:N]
-                )
-            }))
-            .reset_index()
-        )
-        df.append(df_)
-
-        df = (
-            pd
-            .concat(df)
-            .reset_index(drop=True)
+        for (model_name, model), n in zip(self.models, self.models_n):
+            logging.info(f'Getting recs from {model_name}')
+            df_ = pd.DataFrame({self.user_col: user_ids})
+            df_[self.item_col] = model.recommend(
+                df_[self.user_col].tolist(), n
+            )
+            df_ = df_.explode(self.item_col)
+            df.append(df_)
+        df = pd.concat(df).drop_duplicates().reset_index(drop=True)
+        recs = (
+            self
+            .final_model
+            .recommend(df, N)
             .set_index(self.user_col)
         )
-        return df.loc[user_ids, self.item_col]
+        return recs.loc[user_ids, self.item_col].tolist()

@@ -8,18 +8,8 @@ from argparse import ArgumentError, ArgumentParser
 from datetime import date, datetime
 from common.data import DataLoader
 from common.tuning import Optimizer
-from trainer import Trainer
-
-from const import *
-
-def get_model_class(model):
-        if model is None:
-            return None
-        rec_module = '.'.join(model.split('.')[:-1])
-        module = importlib.import_module(f'models.{rec_module}')
-        rec_class_name = model.split('.')[-1]
-        rec_class = getattr(module, rec_class_name)
-        return rec_class
+from .trainer import Trainer, get_model_class
+from .const import *
 
 
 if __name__ == '__main__':
@@ -34,6 +24,7 @@ if __name__ == '__main__':
     parser.add_argument('-n', '--n_recs', type=int,  default=10)
     parser.add_argument('--test_size', type=float, default=None)
     parser.add_argument('--folds', type=int, default=None)
+    parser.add_argument('--watched_pct_min', type=int, default=0)
     parser.add_argument('-o', '--optuna', action='store_true', default=False)
     parser.add_argument('--optuna_trials', type=int, default=1)
     args, params = parser.parse_known_args()
@@ -42,6 +33,7 @@ if __name__ == '__main__':
 
     data = DataLoader.from_folder(
         args.data,
+        watched_pct_min=args.watched_pct_min,
         user_col=USER_COL,
         item_col=ITEM_COL,
         date_col=DATE_COL
@@ -78,9 +70,7 @@ if __name__ == '__main__':
             log_params = optimizer.best_params
         else:
             logging.info('Training model..')
-            metrics, log_params, rec = trainer.train(
-                test_size=args.test_size
-            )
+            metrics, log_params, rec = trainer.train()
 
         end_time = time.time()
 
@@ -97,7 +87,7 @@ if __name__ == '__main__':
                 'recsys': args.recsys,
                 'optuna': args.optuna,
                 'optuna_trials': args.optuna_trials,
-                'params': str(params),
+                'watched_pct_min': args.watched_pct_min,
                 'n_recs': args.n_recs
             }
         })

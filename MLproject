@@ -12,5 +12,11 @@ entry_points:
         parameters:
             data: string
             recsys: string
-            n_recs: int
-        command: "python -m recsys_course.train -d {data} -r {recsys}"
+            fallback: string
+            params: string
+        command: "python \
+            -m recsys_course.train \
+            -d ./data/preprocessed \
+            -r {recsys} \
+            -fb {fallback} \
+            {params}"

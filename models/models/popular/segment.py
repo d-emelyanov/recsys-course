@@ -13,36 +13,21 @@ class SegmentRecommender(BaseRecommender):
     def from_args(cls, args, **kwargs):
         parser = ArgumentParser()
         parser.add_argument('--days', type=int)
-        parser.add_argument('--watched_pct_min', type=int, default=0)
         parser.add_argument('--segment', type=str, nargs='*')
-        args = parser.parse_args(args)
+        args, _ = parser.parse_known_args(args)
         return cls(**{
             k: v
             for k, v in vars(args).items()
         }, **kwargs)
 
-    def __init__(
-        self,
-        days,
-        watched_pct_min,
-        segment,
-        item_col,
-        user_col,
-        date_col,
-    ):
-        self.days = days
-        self.watched_pct_min = watched_pct_min
-        self.item_col = item_col
-        self.user_col = user_col
-        self.date_col = date_col
-        self.segment = segment
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         self.recommendations = []
 
     @property
     def params(self):
         return {
             'days': self.days,
-            'watched_pct_min': self.watched_pct_min,
             'segment': str(self.segment)
         }
 
@@ -62,7 +47,6 @@ class SegmentRecommender(BaseRecommender):
         return data
 
     def fit(self, df):
-        df = df.loc[df['watched_pct'] >= self.watched_pct_min]
         df = self.get_full_df(df, self.user_col)
         self.recommendations = {}
         for segment in tqdm(self.get_segments(df)):
@@ -94,4 +78,44 @@ class SegmentRecommender(BaseRecommender):
         df = preprocess_users(df)
         df['segment'] = df.apply(lambda x: [x[i] for i in self.segment], axis=1)
         df['recs'] = df['segment'].map(lambda x: get_recs(x, self.recommendations, self.fallback, N))
+        return df['recs']
+
+
+class SegmentUnseenRecommender(SegmentRecommender):
+
+    def fit(self, df):
+        self.user_seen = (
+            df
+            .groupby(self.user_col)[self.item_col]
+            .apply(list)
+        )
+        super().fit(df)
+
+    def recommend(self, user_ids, N):
+        recs = []
+
+        def get_recs(x, user_id, recommendations, fallback, seen):
+            r = recommendations.get(tuple(x), [])
+            if len(r) < N:
+                r = fallback
+            if user_id in seen.index:
+                seen = seen.loc[user_id]
+            else:
+                seen = []
+            recs = [x for x in r if x not in seen]
+            return recs[:N]
+
+        df = pd.DataFrame({self.user_col: user_ids})
+        df = self.get_full_df(df, self.user_col)
+        #df = preprocess_users(df)
+        df['segment'] = df.apply(lambda x: [x[i] for i in self.segment], axis=1)
+        df['recs'] = df.apply(
+            lambda x: get_recs(x['segment'], x[self.user_col], self.recommendations, self.fallback, self.user_seen),
+            axis=1
+        )
+
+        for uid in tqdm(user_ids):
+            seen = set(self.user_seen.loc[uid])
+            recs_ = set(self.recommendations).difference(seen)
+            recs.append(list(recs_)[:N])
         return df['recs']

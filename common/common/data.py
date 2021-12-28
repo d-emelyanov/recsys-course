@@ -40,29 +40,29 @@ class DataLoader:
         unused,
         user_col,
         item_col,
-        date_col
+        date_col,
+        watched_pct_min
     ):
         self.users = users
         self.items = items
         self.unused = unused
         self.interactions = interactions
-        self.interactions[date_col] = pd.to_datetime(
-            self.interactions[date_col]
-        )
         self.user_col = user_col
         self.item_col = item_col
         self.date_col = date_col
+        self.watched_pct_min = watched_pct_min
 
     def get_train_test(self, test_size):
         n = self.interactions.shape[0]
         i = int(n * (1 - test_size))
         interactions = self.interactions.sort_values(
             self.date_col
-        )
-        return (
-            interactions.loc[:i],
-            interactions.loc[i:]
-        )
+        ).reset_index(drop=True)
+        train = interactions.loc[:i]
+        if self.watched_pct_min:
+            train = train.loc[train['watched_pct'] >= self.watched_pct_min]
+        test = interactions.loc[i:]
+        return train, test
 
     def get_folds(self, folds):
         last_date = self.interactions[self.date_col].max().normalize()
@@ -79,29 +79,32 @@ class DataLoader:
             datetime_column=self.date_col,
             fold_stats=True
         ))
-
         folds_info_with_stats = pd.DataFrame([info for _, _, info in folds_with_stats])
         logging.info(folds_info_with_stats)
 
-        folds_with_stats = [
-            (
-                self.interactions.loc[train_idx],
-                self.interactions.loc[test_idx],
-                info
+        folds_with_stats = []
+        for train_idx, test_idx, info in folds_with_stats:
+            train = self.interactions.loc[train_idx]
+            test = self.interactions.loc[test_idx]
+            if self.watched_pct_min:
+                train = train.loc[train['watched_pct'] >= self.watched_pct_min]
+            folds_with_stats.append(
+                (train, test, info)
             )
-            for train_idx, test_idx, info in folds_with_stats
-        ]
-
         return folds_with_stats
 
 
-    def get_real(self, df):
+    def get_real_items(self, user_ids):
+        df = self.interactions.loc[
+            self.interactions[self.user_col].isin(user_ids)
+        ]
         return (
             df
             .sort_values([self.user_col, self.date_col])
             .groupby(self.user_col)[self.item_col]
             .apply(list)
             .reset_index()
+            .rename(columns={self.item_col: 'real'})
         )
 
     @property
@@ -130,7 +133,11 @@ class DataLoader:
 
     @property
     def interactions(self):
-        return self.__interactions
+        interactions = self.__interactions
+        interactions[self.date_col] = pd.to_datetime(
+            interactions[self.date_col]
+        )
+        return interactions
 
     @unused.setter
     def unused(self, var):

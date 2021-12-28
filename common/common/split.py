@@ -69,7 +69,6 @@ class TimeRangeSplit():
             (self.date_range >= df_datetime.min()) &
             (self.date_range <= df_datetime.max())
         ]
-
         for start, end in pairwise(date_range):
             fold_info = {
                 'Start date': start,
@@ -82,7 +81,6 @@ class TimeRangeSplit():
 
             test_mask = (df_datetime >= start) & (df_datetime < end)
             test_idx = df.index[test_mask]
-
             if self.filter_cold_users:
                 new = np.setdiff1d(
                     df.loc[test_idx, user_column].unique(),
@@ -119,7 +117,6 @@ class TimeRangeSplit():
 
             if fold_stats:
                 fold_info['Test'] = len(test_idx)
-
             yield (train_idx, test_idx, fold_info)
 
     def get_n_splits(self, df, datetime_column='date'):
