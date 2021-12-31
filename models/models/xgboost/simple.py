@@ -53,13 +53,17 @@ class XGBoostRecommender(BaseRecommender):
     def fit(self, df):
         logging.info('Training booster')
 
+        logging.info('Getting unused full df')
         unused = self.get_full_df(
-            data=self.unused,
+            data=self.unused.loc[
+                self.unused[self.user_col].isin(df[self.user_col].unique().tolist())
+            ],
             user_col=self.user_col,
             item_col=self.item_col
         )
         unused['y'] = 0
 
+        logging.info('Getting interactions full df')
         data = self.get_full_df(
             data=df,
             user_col=self.user_col,
@@ -68,6 +72,7 @@ class XGBoostRecommender(BaseRecommender):
         data['y'] =  1
         data = data.drop(self.date_col, axis=1)
         data = pd.concat([unused, data]).reset_index(drop=True)
+
         logging.info('Checking onehot')
         feature_list = []
         for feature_ in self.features:
@@ -77,6 +82,8 @@ class XGBoostRecommender(BaseRecommender):
                 feature_list += [x for x in data.columns if x.startswith(f'{feature_}_')]
             else:
                 feature_list.append(feature_)
+
+        logging.info('Fitting XGBoost')
         self.xgboost.fit(data[feature_list], data['y'])
 
     def recommend(self, df, N):

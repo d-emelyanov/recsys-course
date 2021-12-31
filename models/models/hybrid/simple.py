@@ -1,5 +1,6 @@
 import pandas as pd
 import logging
+import numpy as np
 from common.abstract import BaseRecommender
 from argparse import ArgumentParser
 from models.loader import load_model
@@ -14,7 +15,7 @@ class CombineRecommender(BaseRecommender):
     def from_args(cls, args, **kwargs):
         parser = ArgumentParser()
         parser.add_argument('--models', nargs='*', type=str, required=True)
-        parser.add_argument('--models_n', nargs='*', type=int, required=True)
+        parser.add_argument('--models_n', type=int, required=True)
         args, params = parser.parse_known_args(args)
         return cls(**{
             k: v
@@ -41,7 +42,7 @@ class CombineRecommender(BaseRecommender):
         for i, (model_name, model) in enumerate(self.models):
             params = {
                 **params,
-                **{f'{i}: {model_name}__{k}': v for k, v in model.params.items()}
+                **{f'{i}__{model_name}__{k}': v for k, v in model.params.items()}
             }
         return params
 
@@ -66,29 +67,45 @@ class CombineRecommender(BaseRecommender):
             model.fit(df)
 
     def recommend(self, user_ids, N):
+
+        def explode(df, icol):
+            df[icol] = df[icol].map(
+                lambda x: list(enumerate(x))
+            )
+            df = df.explode(icol)
+            df[['rank', icol]] = df[icol].apply(pd.Series)
+            return df
+
+        def score(x, N):
+            return np.power(
+                np.prod(x),
+                1 / N
+            )
+
         df = []
-        for (model_name, model), n in zip(self.models, self.models_n):
+        for model_name, model in self.models:
             logging.info(f'Getting recs from {model_name}')
             df_ = pd.DataFrame({self.user_col: user_ids})
             df_[self.item_col] = model.recommend(
-                df_[self.user_col].tolist(), n
+                df_[self.user_col].tolist(), self.models_n
             )
-            df_ = df_.explode(self.item_col)
+            df_ = explode(df_, self.item_col)
             df.append(df_)
 
+        logging.info('Generating Final Recs')
         recs = (
             pd
             .concat(df)
-            .reset_index(drop=True)
-            .groupby(self.user_col)[self.item_col]
-            .value_counts()
+            .groupby([self.user_col, self.item_col])['rank']
+            .apply(lambda x: score(x, self.models_n))
+            .reset_index()
+            .groupby(self.user_col)
+            .apply(lambda x: x.sort_values('rank')[self.item_ccol].tolist()[:N])
+            .loc[user_ids]
+            .values
         )
 
-        ret = []
-        for uid in tqdm(user_ids):
-            ret.append([x for x in recs.loc[uid].index.tolist() if x not in self.user_seen][:N])
-
-        return pd.Series(ret)
+        return pd.Series(recs)
 
 
 class CombineUnseenRecommender(CombineRecommender):

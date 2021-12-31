@@ -14,6 +14,8 @@ class SegmentRecommender(BaseRecommender):
         parser = ArgumentParser()
         parser.add_argument('--days', type=int)
         parser.add_argument('--segment', type=str, nargs='*')
+        parser.add_argument('--fb__min_watched_pct', type=int, default=0)
+        parser.add_argument('--fb__total_dur_min', type=int, default=0)
         args, _ = parser.parse_known_args(args)
         return cls(**{
             k: v
@@ -28,7 +30,9 @@ class SegmentRecommender(BaseRecommender):
     def params(self):
         return {
             'days': self.days,
-            'segment': str(self.segment)
+            'segment': str(self.segment),
+            'fb__min_watched_pct': self.fb__min_watched_pct,
+            'fb__total_dur_min': self.fb__total_dur_min
         }
 
     def get_segments(self, df):
@@ -47,6 +51,10 @@ class SegmentRecommender(BaseRecommender):
         return data
 
     def fit(self, df):
+        df = df.loc[
+            (df['watched_pct'] >= self.fb__min_watched_pct)
+            & (df['total_dur'] >= self.fb__total_dur_min)
+        ]
         df = self.get_full_df(df, self.user_col)
         self.recommendations = {}
         for segment in tqdm(self.get_segments(df)):
@@ -68,8 +76,8 @@ class SegmentRecommender(BaseRecommender):
     def recommend(self, user_ids, N):
 
         def get_recs(x, recommendations, fallback, N):
-            r = recommendations.get(tuple(x), [])
-            if len(r) < N:
+            r = recommendations.get(tuple(x))
+            if r is None:
                 r = fallback
             return r[:N]
 
@@ -78,7 +86,7 @@ class SegmentRecommender(BaseRecommender):
         df = preprocess_users(df)
         df['segment'] = df.apply(lambda x: [x[i] for i in self.segment], axis=1)
         df['recs'] = df['segment'].map(lambda x: get_recs(x, self.recommendations, self.fallback, N))
-        return df['recs']
+        return pd.Series(df['recs'].values)
 
 
 class SegmentUnseenRecommender(SegmentRecommender):
@@ -118,4 +126,5 @@ class SegmentUnseenRecommender(SegmentRecommender):
             seen = set(self.user_seen.loc[uid])
             recs_ = set(self.recommendations).difference(seen)
             recs.append(list(recs_)[:N])
+
         return df['recs']

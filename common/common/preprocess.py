@@ -55,7 +55,7 @@ def preprocess_items(data):
     data['for_kids'] = data['for_kids'].astype('int')
 
     data['for_kids_rating'] = data['age_rating'].map(
-        lambda x: 1 if int(x) <= 6 else -1 if pd.isna(x) else 0
+        lambda x: -1 if pd.isna(x) else 1 if int(x) <= 12 else 0
     )
     data.loc[data.age_rating.isna(), 'age_rating'] = 0
     data['age_rating'] = category(data['age_rating'])
@@ -99,7 +99,7 @@ def preprocess_unused_items(data, items):
         .groupby('user_id')['item_id']
         .apply(UnusedItems(
             ids=items,
-            r=30
+            r=10
         ))
         .reset_index()
         .explode('item_id')

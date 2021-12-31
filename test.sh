@@ -10,6 +10,19 @@
 #         --watched_pct_min 0 \
 #         --segment age sex
 
+
+# python -m recsys_course.test \
+#     -t ./data/raw/sample_submission.csv \
+#     -s ./data/submission.csv \
+#     -r popular.SegmentRecommender \
+#     -fb popular.PopularRecommender \
+#     --watched_pct_min 5 \
+#     -d ./data/preprocessed \
+#         --days 10 \
+#         --segment sex age \
+#         --fb__min_watched_pct 20 \
+#         --fb__total_dur_min 2000
+
 python -m recsys_course.test \
             --watched_pct_min 0 \
             -r lightfm.WeightFeaturedLightFM \
@@ -21,6 +34,5 @@ python -m recsys_course.test \
                 --notseen_watched_lower 5 \
                 --days 10 \
                 --no_components 150 \
-                --user_features_col age sex income \
-                --item_features_col content_type release_year genres countries age_rating \
-                --preprocess_array_split genres
+                --fb__min_watched_pct 10 \
+                --fb__total_dur_min 2000 \

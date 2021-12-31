@@ -21,7 +21,7 @@ class SimpleLightFM(BaseRecommender):
         parser.add_argument('--lfm__k', type=int, default=5)
         parser.add_argument('--lfm__n', type=int, default=10)
         parser.add_argument('--lfm__loss', type=str, default='warp')
-        parser.add_argument('--lfm__max_sampled', type=int, default=10)
+        parser.add_argument('--c', type=int, default=10)
         args, _ = parser.parse_known_args(args)
         return cls(**{
             k: v

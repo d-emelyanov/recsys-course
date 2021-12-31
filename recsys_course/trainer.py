@@ -131,6 +131,10 @@ class Trainer:
                 rec.add_user_features(self.data.users)
             if self.data.has_unused:
                 rec.add_unused(self.data.unused)
+        if fallback:
+            if self.data.has_users:
+                fallback.add_user_features(self.data.users)
+
 
         return rec, fallback
 

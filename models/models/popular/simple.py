@@ -11,6 +11,8 @@ class PopularRecommender(BaseRecommender):
     def from_args(cls, args, **kwargs):
         parser = ArgumentParser()
         parser.add_argument('--days', type=int, default=5)
+        parser.add_argument('--fb__min_watched_pct', type=int, default=0)
+        parser.add_argument('--fb__total_dur_min', type=int, default=0)
         args, _ = parser.parse_known_args(args)
         return cls(**{
             k: v
@@ -25,6 +27,8 @@ class PopularRecommender(BaseRecommender):
     def params(self):
         return {
             'days': self.days,
+            'fb__min_watched_pct': self.fb__min_watched_pct,
+            'fb__total_dur_min': self.fb__total_dur_min
         }
 
     def add_item_features(self, data):
@@ -34,6 +38,10 @@ class PopularRecommender(BaseRecommender):
         return None
 
     def fit(self, df):
+        df = df.loc[
+            (df['watched_pct'] >= self.fb__min_watched_pct)
+            & (df['total_dur'] >= self.fb__total_dur_min)
+        ]
         min_date = df[self.date_col].max().normalize() - pd.DateOffset(days=self.days)
         self.recommendations = df.loc[df[self.date_col] > min_date, self.item_col].value_counts().index.values.tolist()
 
