@@ -17,14 +17,15 @@ class TestSegmentRecommender(TestCase):
             (5, 2, '2021-01-01')
         ], columns=['uid', 'iid', 'ts'])
         self.data['watched_pct'] = 100
+        self.data['total_dur'] = 1000
         self.data['ts'] = pd.to_datetime(self.data['ts'])
         self.user_features = pd.DataFrame([
-            (1, 'm'),
-            (2, 'm'),
-            (3, 'm'),
-            (4, 'f'),
-            (5, 'f')
-        ], columns=['uid', 'gender'])
+            (1, 'm', '10-15', '1000+', 1),
+            (2, 'm', '10-15', '1000+', 1),
+            (3, 'm', '10-15', '1000+', 1),
+            (4, 'f', '10-15', '1000+', 1),
+            (5, 'f', '10-15', '1000+', 1)
+        ], columns=['uid', 'sex', 'age', 'income', 'kids_flg'])
         return super().setUp()
 
     def test_fit(self):
@@ -32,10 +33,12 @@ class TestSegmentRecommender(TestCase):
         model = SegmentRecommender(
             days=1,
             watched_pct_min=0,
-            segment=['gender'],
+            segment=['sex'],
             item_col='iid',
             user_col='uid',
-            date_col='ts'
+            date_col='ts',
+            fb__min_watched_pct=0,
+            fb__total_dur_min=0
         )
         model.add_user_features(self.user_features)
         model.fit(self.data)
@@ -52,10 +55,12 @@ class TestSegmentRecommender(TestCase):
         model = SegmentRecommender(
             days=1,
             watched_pct_min=0,
-            segment=['gender'],
+            segment=['sex'],
             item_col='iid',
             user_col='uid',
-            date_col='ts'
+            date_col='ts',
+            fb__min_watched_pct=0,
+            fb__total_dur_min=0
         )
         model.add_user_features(self.user_features)
         model.fit(self.data)
@@ -69,5 +74,5 @@ class TestSegmentRecommender(TestCase):
                 {'uid': 4, 'recs': [2,1]},
                 {'uid': 5, 'recs': [2,1]},
             ],
-            df.to_dict('record')
+            df.to_dict('records')
         )

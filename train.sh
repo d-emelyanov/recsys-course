@@ -118,7 +118,7 @@
 #             -d ./data/preprocessed \
 #                 --models popular.PopularRecommender \
 #                 --models_n 100 \
-#                 --final_model xgboost.XGBoostRecommender \
+#                 --final_model boost.XGBoostRecommender \
 #                 --user_features_col age sex \
 #                 --item_features_col content_type release_year \
 #                 --category_features age sex content_type \

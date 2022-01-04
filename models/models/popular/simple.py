@@ -25,10 +25,20 @@ class PopularRecommender(BaseRecommender):
 
     @property
     def params(self):
+        params = {}
+        if hasattr(self, 'fb__min_watched_pct'):
+            params = {
+                **params,
+                **{'fb__min_watched_pct': self.fb__min_watched_pct}
+            }
+        if hasattr(self, 'fb__min_watched_pct'):
+            params = {
+                **params,
+                **{'fb__total_dur_min': self.fb__total_dur_min}
+            }
         return {
             'days': self.days,
-            'fb__min_watched_pct': self.fb__min_watched_pct,
-            'fb__total_dur_min': self.fb__total_dur_min
+            **params
         }
 
     def add_item_features(self, data):
@@ -38,15 +48,26 @@ class PopularRecommender(BaseRecommender):
         return None
 
     def fit(self, df):
-        df = df.loc[
-            (df['watched_pct'] >= self.fb__min_watched_pct)
-            & (df['total_dur'] >= self.fb__total_dur_min)
-        ]
+        mask = None
+        if hasattr(self, 'fb__min_watched_pct'):
+            mask = (df['watched_pct'] >= self.fb__min_watched_pct)
+        if hasattr(self, 'fb__total_dur_min'):
+            mask = mask & (df['total_dur'] >= self.fb__total_dur_min)
+        if mask is not None:
+            df = df.loc[mask]
         min_date = df[self.date_col].max().normalize() - pd.DateOffset(days=self.days)
-        self.recommendations = df.loc[df[self.date_col] > min_date, self.item_col].value_counts().index.values.tolist()
+        self.recommendations = df.loc[df[self.date_col] > min_date, self.item_col].value_counts()
 
-    def recommend(self, user_ids, N):
-        return pd.Series([self.recommendations[:N] for _ in range(len(user_ids))])
+    def recommend(self, user_ids, N, with_scores=False):
+        recs = self.recommendations.index.values.tolist()
+        if with_scores:
+            scores = self.recommendations.values.tolist()
+            return (
+                pd.Series([recs[:N] for _ in range(len(user_ids))]),
+                pd.Series([scores[:N] for _ in range(len(user_ids))]),
+            )
+        else:
+            return pd.Series([recs[:N] for _ in range(len(user_ids))])
 
 
 class PopularUnseenRecommmender(PopularRecommender):

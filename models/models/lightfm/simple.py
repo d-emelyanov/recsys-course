@@ -22,6 +22,8 @@ class SimpleLightFM(BaseRecommender):
         parser.add_argument('--lfm__n', type=int, default=10)
         parser.add_argument('--lfm__loss', type=str, default='warp')
         parser.add_argument('--c', type=int, default=10)
+        parser.add_argument('--watched_pct_lower', type=int, default=10)
+        parser.add_argument('--watched_pct_upper', type=int, default=90)
         args, _ = parser.parse_known_args(args)
         return cls(**{
             k: v
@@ -51,6 +53,10 @@ class SimpleLightFM(BaseRecommender):
         return self.lightfm.get_params()
 
     def fit(self, df):
+        df = df.loc[
+            (df.watched_pct >= self.watched_pct_lower)
+            & (df.watched_pct <= self.watched_pct_upper)
+        ]
         self.data = Dataset()
         self.data.fit(
             users=df[self.user_col].unique().tolist(),
@@ -69,19 +75,68 @@ class SimpleLightFM(BaseRecommender):
             .apply(list)
         )
 
-    def recommend(self, user_ids, N):
+    def get_user_representation(self, user_ids):
+        uids, _, _ , _ = self.data.mapping()
+        if len(list(set(user_ids).difference(set(uids.keys())))) > 0:
+            raise ValueError('Some ids are not presented in LightFM train')
+        indices = [uids.get(u) for u in user_ids]
+        b, e = self.lightfm.get_user_representations()
+        return b[indices], e[indices]
+
+    def recommend(self, user_ids, N, with_scores=False):
         uid, _, iid, _ = self.data.mapping()
         iid_reverted = {v: k for k, v in iid.items()}
-        recs = []
 
+        ub, ue = self.get_user_representation(user_ids)
+        ib, ie = self.lightfm.get_item_representations()
+        scores = ue.dot(ie.T) + ub.reshape(-1, 1) + ib.reshape(1, -1)
+        recs = np.argsort(-scores)
+
+        scores_  = []
+        recommendations = []
         for uid_ in tqdm(user_ids):
-            seen = set([iid.get(x) for x in self.user_seen.loc[uid_]])
-            not_seen = list(set(iid.values()).difference(seen))
-            recs.append([
-                iid_reverted[not_seen[k]]
-                for k in np.argsort(-self.lightfm.predict(
-                    user_ids=uid.get(uid_),
-                    item_ids=not_seen
-                ))[:N]
+            seen = [iid.get(x) for x in self.user_seen.loc[uid_]]
+            id_recs = [
+                k
+                for k in recs[uid.get(uid_)]
+                if k not in seen
+            ][:N]
+            recommendations.append([
+                iid_reverted[k]
+                for k in id_recs
             ])
-        return pd.Series(recs)
+            scores_.append(scores[uid.get(uid_), id_recs])
+
+        if with_scores:
+            return (
+                pd.Series(recommendations),
+                pd.Series(scores_)
+            )
+        else:
+            return pd.Series(recommendations)
+
+
+class SimpleWeightedLightFM(SimpleLightFM):
+
+    def fit(self, df):
+        df = df.loc[
+            (df.watched_pct >= self.watched_pct_lower)
+            & (df.watched_pct <= self.watched_pct_upper)
+        ]
+        self.data = Dataset()
+        self.data.fit(
+            users=df[self.user_col].unique().tolist(),
+            items=df[self.item_col].unique().tolist()
+        )
+        interactions, weights = self.data.build_interactions(
+            df[[self.user_col, self.item_col, 'watched_pct']].values.tolist()
+        )
+        self.lightfm.fit(
+            interactions=interactions,
+            sample_weight=weights,
+        )
+        self.user_seen = (
+            df
+            .groupby(self.user_col)[self.item_col]
+            .apply(list)
+        )
