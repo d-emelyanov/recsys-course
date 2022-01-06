@@ -236,16 +236,18 @@ class TestTrain(TestCase):
             '--days', '10',
             '--watched_pct_min', '0',
             '--no_components', '10',
-            '--models', 'popular.PopularRecommender', 'popular.SegmentRecommender', 'lightfm.SimpleWeightedLightFM',
+            '--models', 'lightfm.SimpleLightFM',
             '--models_n', '100',
-            '--models_w', '0.33', '0.33', '0.33',
+            '--models_w', '1.0',
             '--final_model_max_sample', '10',
             '--final_model', 'boost.CatboostRecommender',
-            '--features', 'score_0', 'score_1',
-            '--text_features', 'keywords',
+            '--features', 'score_0',
+            '--exclude_seen', '0',
+            #'--category_features', 'content_type', 'age', 'sex',
+            #'--text_features', 'keywords',
             '--watched_pct_lower', '0',
             '--no_components', '10',
-            '--segment', 'age'
+            #'--segment', 'age'
         ]
         trainer = Trainer(
             params=params,
@@ -256,4 +258,5 @@ class TestTrain(TestCase):
             n_recs=10,
         )
         metrics, params, (rec, _) = trainer.train()
+
         return metrics

@@ -50,19 +50,19 @@
 #     -v $(pwd)/data:/home/data/ \
 #     -v $(pwd)/mlruns:/home/mlruns/ \
 #     recsys-course \
-        python -m recsys_course.train \
-            --watched_pct_min 10 \
-            -r lightfm.WeightFeaturedLightFM \
-            -fb popular.SegmentRecommender \
-            -d ./data/preprocessed \
-                --notseen_watched_upper 95 \
-                --notseen_watched_lower 5 \
-                --test_size 0.3 \
-                --days 10 \
-                --no_components 150 \
-                --fb__min_watched_pct 10 \
-                --fb__total_dur_min 2000 \
-                --segment age sex
+        # python -m recsys_course.train \
+        #     --watched_pct_min 10 \
+        #     -r lightfm.WeightFeaturedLightFM \
+        #     -fb popular.SegmentRecommender \
+        #     -d ./data/preprocessed \
+        #         --notseen_watched_upper 95 \
+        #         --notseen_watched_lower 5 \
+        #         --test_size 0.3 \
+        #         --days 10 \
+        #         --no_components 150 \
+        #         --fb__min_watched_pct 10 \
+        #         --fb__total_dur_min 2000 \
+        #         --segment age sex
 
 
 # docker run --rm -d \
@@ -124,3 +124,27 @@
 #                 --category_features age sex content_type \
 #                 --test_size 0.3 \
 #                 --days 10
+
+
+python -m recsys_course.train \
+            --watched_pct_min 10 \
+            -r hybrid.TwoStageRecommender \
+            -fb popular.PopularRecommender \
+            -d ./data/preprocessed \
+                --test_size 0.3 \
+                --days 10 \
+                --models popular.SegmentRecommender lightfm.SimpleWeightedLightFM \
+                --no_components 20 \
+                --watched_pct_lower 10 \
+                --watched_pct_upper 90 \
+                --models_n 100 \
+                --models_w 0.2 0.8 \
+                --final_model_sample 0.5 \
+                --final_model boost.CatboostRecommender \
+                --features score_0 score_1 \
+                --category_features age sex release_year_cat content_type \
+                --text_features countries genres \
+                --segment age sex \
+                --fb__min_watched_pct 10 \
+                --fb__total_dur_min 2000 \
+                --exclude_seen 0

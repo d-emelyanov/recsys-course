@@ -59,15 +59,15 @@ class PopularRecommender(BaseRecommender):
         self.recommendations = df.loc[df[self.date_col] > min_date, self.item_col].value_counts()
 
     def recommend(self, user_ids, N, with_scores=False):
-        recs = self.recommendations.index.values.tolist()
+        recs = self.recommendations.index.values.tolist()[:N]
         if with_scores:
-            scores = self.recommendations.values.tolist()
+            scores = self.recommendations.values.tolist()[:N]
             return (
-                pd.Series([recs[:N] for _ in range(len(user_ids))]),
-                pd.Series([scores[:N] for _ in range(len(user_ids))]),
+                pd.Series([recs for _ in range(len(user_ids))]),
+                pd.Series([scores for _ in range(len(user_ids))]),
             )
         else:
-            return pd.Series([recs[:N] for _ in range(len(user_ids))])
+            return pd.Series([recs for _ in range(len(user_ids))])
 
 
 class PopularUnseenRecommmender(PopularRecommender):

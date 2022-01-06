@@ -25,14 +25,20 @@
 
 python -m recsys_course.test \
             --watched_pct_min 0 \
-            -r lightfm.WeightFeaturedLightFM \
+            -r hybrid.TwoStageRecommender \
             -fb popular.PopularRecommender \
             -t ./data/raw/sample_submission.csv \
             -s ./data/submission.csv \
             -d ./data/preprocessed \
-                --notseen_watched_upper 95 \
-                --notseen_watched_lower 5 \
                 --days 10 \
-                --no_components 150 \
+                --models popular.SegmentRecommender \
+                --models_n 100 \
+                --models_w 1 \
+                --final_model_sample 0.3 \
+                --final_model boost.CatboostRecommender \
+                --features score_0 \
+                --category_features age sex release_year_cat content_type \
+                --text_features countries \
+                --segment age sex \
                 --fb__min_watched_pct 10 \
-                --fb__total_dur_min 2000 \
+                --fb__total_dur_min 2000

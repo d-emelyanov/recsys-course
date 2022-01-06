@@ -142,6 +142,7 @@ class Trainer:
         metrics = {}
         rec.fit(train)
         if self.has_fallback:
+            fallback.fit(train)
             test_cold = test.loc[
                 ~test[self.data.user_col].isin(
                     train[self.data.user_col].unique().tolist()

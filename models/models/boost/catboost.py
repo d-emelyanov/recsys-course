@@ -44,23 +44,18 @@ class CatboostRecommender(BaseRecommender):
 
     @property
     def params(self):
-        return self.catboost.get_all_params()
+        return self.catboost.get_params()
 
     @property
     def feature_list(self):
         f = []
-        text_features = None
-        category_features = None
-
         if self.text_features:
-            text_features = list(range(len(self.text_features)))
             f += self.text_features
-
         if self.category_features:
-            category_features = list(range(len(f), len(f) + len(self.category_features)))
             f += self.category_features
-
-        return f, text_features, category_features
+        if self.features:
+            f += self.features
+        return f
 
     def fit(self, df):
         logging.info('Training booster')
@@ -71,23 +66,20 @@ class CatboostRecommender(BaseRecommender):
             user_col=self.user_col,
             item_col=self.item_col
         )
-        for tf in self.text_features:
-            df[tf] = df[tf].map(lambda x: x.replace(',', ' ').replace('  ', ' '))
+        if self.category_features:
+            for cf in self.category_features:
+                df[cf] = df[cf].fillna('unknown')
+        if self.text_features:
+            for tf in self.text_features:
+                df[tf] = df[tf].fillna('')
+                df[tf] = df[tf].map(lambda x: x.replace(',', ' ').replace('  ', ' '))
 
-        logging.info('Fitting XGBoost')
-        (
-            feature_list,
-            cat_features,
-            text_features
-        ) = self.feature_list
-        X = df[feature_list].values
-        y = df['y']
-
+        logging.info('Fitting Catboost')
         self.catboost.fit(
-            X=X,
-            y=y,
-            cat_features=cat_features,
-            text_features=text_features
+            X=df[self.feature_list],
+            y=df['y'],
+            cat_features=self.category_features,
+            text_features=self.text_features,
         )
 
     def recommend(self, df, N):
@@ -96,11 +88,16 @@ class CatboostRecommender(BaseRecommender):
             user_col=self.user_col,
             item_col=self.item_col
         )
-        for tf in self.text_features:
-            df[tf] = df[tf].map(lambda x: x.replace(',', ' ').replace('  ', ' '))
-        feature_list, _, _ = self.feature_list
+        if self.category_features:
+            for cf in self.category_features:
+                df[cf] = df[cf].fillna('unknown')
+        if self.text_features:
+            for tf in self.text_features:
+                df[tf] = df[tf].fillna('')
+                df[tf] = df[tf].map(lambda x: x.replace(',', ' ').replace('  ', ' '))
+
         df['score'] = self.catboost.predict_proba(
-            df[feature_list]
+            df[self.feature_list]
         )[:, 1]
 
         df = (
